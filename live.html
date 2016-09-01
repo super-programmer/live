@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>【乐橙直播】</title>
+    <meta name="format-detection" content="telephone=no">
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=1.0, user-scalable=0">
+    <script type="text/javascript" src="js/rem.js"></script>
+    <script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="js/jquery-jsonp.js"></script>
+    <script type="text/javascript" src="js/swiper-3.3.1.min.js"></script>
+    <link type="text/css" href="css/common.css" rel="stylesheet">
+    <link type="text/css" href="css/swiper-3.3.1.min.css" rel="stylesheet">
+</head>
+<body>
+<div id="load" class="load">
+    <div class="img"><img src="img/loading.gif"></div>
+    正在加载，请稍等...
+</div>
+<div class="liveindex">
+    <header id="foot" class="hide">
+        <div class="ins-wp">
+            <img src="img/icon-72.png" class="ins-icon">
+            <div class="ins-text">
+                想看更多？快安装乐橙客户端吧！
+            </div>
+            <button id="install" class="ins-btn"></button>
+        </div>
+    </header>
+    <div class="videobox" id="player">
+        <div id="videoLoading" class="py-load j-cover hide" ></div>
+        <video  src="" webkit-playsinline controls="controls" poster="img/live_banner_default.jpg">
+        </video>
+    </div>
+    <div class="nav">
+        <div class="navtopline"></div>
+        <div class="navtab">
+            <!--<div class="navlink navlinkon detail">简介</div>-->
+            <div class="navlink say">评论</div>
+        </div>
+    </div>
+    <div class="main">
+        <!--视频简介-->
+        <div class="live-detail live-tab">
+            <div class="looksum">
+                <span class="lookeye"></span>
+                <span class="lookhand"></span>
+            </div>
+            <div class="liveaddress">
+                <div class="livestartime">
+                    <p>
+                        直播时间:<span class="livestartime-detail"></span>
+                    </p>
+
+                    <p>
+                        <span>地点:</span><span class="liveaddress-detail"></span>
+                    </p>
+                </div>
+                <div class="clicklike">
+                </div>
+            </div>
+            <div class="live-detail-describe">
+            </div>
+        </div>
+        <!--评论-->
+        <div class="live-say live-tab">
+            <ul class="live-say-ul">
+                <p class="nosay">暂无评论</p>
+            </ul>
+            <div class="listnull">无更多评论
+                <div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="sayinput">
+        <span class="callback">回复<i>@sss</i></span>
+        <input type="text" placeholder="请输入评论内容" data-hash=""/>
+        <span class="send">发送</span>
+    </div>
+    <div class="channels">
+        <div class="channels-title">
+            其他通道
+        </div>
+        <div class="swiper-container">
+            <div class="swiper-wrapper">
+            </div>
+        </div>
+    </div>
+</div>
+<div class="noactity">活动不存在！</div>
+<div class="refesh">网络请求失败，请<a>重试！</a></div>
+</body>
+<script type="text/javascript" src="js/live.js"></script>
+<script type="text/javascript">
+    var browser = getbrowse();
+    var code = get_url("code");
+    var activityId = get_url('activityId');
+    var options = {
+        activityId:activityId
+    };
+    var _token = "";
+    /*只有在微信和是重定向过来的页面才会换取token*/
+    if (code.length != 0 ) {
+        var options1 = {
+            code: code
+        }
+        getCode(options1, function (data) {
+            if (data.code == 40029) {
+                weixinauthorize();
+            } else if (data.code == 1000) {
+                localStorage.setItem('token', data.data.token + "&" + new Date().getTime());
+            }
+        }, function () {
+            $('.refesh').show();
+        })
+    }
+    getActivityById(options,function(data){
+        if (data.data.name) {
+            if (data.code != 1504) {
+                $('.load').hide();
+                $('.liveindex').css('display', '-webkit-box')
+                $('.liveindex').css('display', '-webkit-flex')
+                $('.liveindex').css('display', 'flex')
+                getlivedetail(data.data);
+                if (data.data.name && data.data.name.length) {
+                    setTimeout(function(){
+                        //需要jQuery
+                        var $body = $('body');
+                        document.title = ('${0}的视频分享').replace('${0}', data.data.name);
+                        // hack在微信等webview中无法修改document.title的情况
+                        var $iframe = $('<iframe src="/favicon.ico"></iframe>');
+                        $iframe.on('load',function() {
+                            setTimeout(function() {
+                                $iframe.off('load').remove();
+                            }, 0);
+                        }).appendTo($body);
+                    },0);
+                }
+            }
+        } else if (data.code == 1504) {
+            $('.load').hide();
+            $('.noactity').show();
+        }
+    },function(){
+        $('.load').hide();
+        $('.refesh').show();
+    })
+    /*判断是否需要微信授权跳转*/
+    $('.sayinput').bind("touchend",function(){
+        var flag = false;
+        if(localStorage.getItem('token')){
+            var time = new Date().getTime();
+            var localtime = localStorage.getItem('token').split("&")[1];
+            if(time-localtime > 600000){
+                flag = true;
+            }
+        }
+        if(code.length==0 || flag){
+			weixinauthorize();
+        }
+    });
+    $('.clicklike').click(function(){
+        var _flag=false;
+        if($(this).attr('class').indexOf('clickover')==-1){
+            if(localStorage.getItem('token')){
+                _token = localStorage.getItem('token').split("&")[0];
+                var time = new Date().getTime();
+                var localtime = localStorage.getItem('token').split("&")[1];
+                if(time-localtime > 600000){
+                    _flag = true;
+                }
+                if(_flag){
+                    weixinauthorize();
+                    return;
+                }
+                var options={
+                    activityId:activityId,
+                    token:_token
+                };
+                clickLike(options,function(){
+                    $('.clicklike').addClass('clickover');
+                    queryLike(options,function(data){
+                        $('.lookhand').html(data.data.likeTimes);
+                        $(this).addClass('clickover');
+                    },function(){
+                        alert('网络异常，请稍后重试！');
+                    })
+                }, function(){
+                    alert('网络异常，请稍后重试！');
+                })
+            }
+
+        }else{
+            return;
+        }
+    });
+    /*点击发送按钮发表评论*/
+    $('.send').click(function(){
+        var _input=$('.sayinput input');
+        if(localStorage.getItem('token')){
+            var aaa = localStorage.getItem('token');
+            _token = aaa.split("&")[0];
+        }
+        var options={
+            activityId:activityId,
+            token:_token,
+            content:_input.val(),
+            replyUserId:"",
+            replyUserType:""
+        };
+        if(_input.attr('data-hash')){
+            options.replyUserId=_input.attr('data-hash');
+            options.replyUserType=_input.attr('data-type');
+        }
+        publishComments(options,function(){
+            var options={
+                activityId:activityId,
+                commentId:-1,
+                count:10
+            }
+            $('.sayinput').removeClass('backsomeone')
+            _input.attr({'placeholder':'请输入评论内容','data-hash':'','data-type':''}).css('padding-left',".6rem");
+            queryComments(options,function(data){
+                if(data.data.comments.length!=0){
+                    $('.live-say-ul').empty();
+                    getsaylist(data.data);
+                }
+            }, function(){
+                alert('网络异常，请稍后重试！');
+            })
+            $('.sayinput input').val("");
+        },function(){
+            $('.sayinput').removeClass('backsomeone')
+            $('.sayinput').find('input').attr({'placeholder':'请输入评论内容','data-hash':'','data-type':''}).css('padding-left',".6rem");
+            alert('网络异常，请稍后重试！');
+        })
+    })
+    $('.main').scroll(function () {
+        var _top = $(this)[0].scrollTop;
+        var _height = $(this)[0].clientHeight;
+        var _scrollheight = $(this)[0].scrollHeight;
+        /*标示评论数据是否已请求完毕*/
+        if (_height + _top >= _scrollheight && $('.live-say').css('display') != "none") {
+            var options = {
+                activityId: activityId,
+                commentId: $('.usersayli').last().data('hash'),
+                count: 5
+            };
+                queryComments(options, function (data) {
+                    if (data.data.comments!=undefined ) {
+                        getsaylist(data.data);
+                    }else if(data.data.comments==undefined){
+                        $('.listnull').show();
+                        setTimeout(function(){
+                            $('.listnull').slideUp("slow");
+                        },1000)
+                    }
+                }, function () {
+                    alert('网络异常，请稍后重试！');
+                });
+            }
+    });
+    /*点击链接安装lcapp*/
+    $('#install').bind('touchend', function () {
+        window.top.location.href='http://a.app.qq.com/o/simple.jsp?pkgname=com.mm.android.lc';
+    });
+    function initvideo(){
+        var $videoLoading=$('#videoLoading')
+        var video=$('video')[0];
+        /*播放开始*/
+        video.addEventListener("play", function () {
+            $videoLoading.show();
+            /*更新播放次数*/
+            video.addEventListener("canplaythrough", function() {
+                $videoLoading.hide();
+            }, false);
+            /*加载失败*/
+            video.addEventListener("error", function() {
+                $videoLoading.hide();
+            }, false);
+        }, false);
+    };
+    initvideo();
+    if(localStorage.getItem('token')){
+        var gettoken = localStorage.getItem('token');
+        _token = gettoken.split("&")[0];
+    }
+    var likeoptions={
+        activityId:activityId,
+        token:_token
+    }
+    if(code.length!=0 && browser=="weichat"){
+        queryLike(likeoptions,function(data){
+            if(data.data.clickedFlag){
+                $('.clicklike').addClass('clickover');
+            }
+        },function(){
+            alert('网络异常，请稍后重试！');
+        })
+    }
+</script>
+</html>
